@@ -1,0 +1,105 @@
+url: https://c-matos.github.io/geopt
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    pkgdown-nav-height: 100px
+    base_font:
+      google: Roboto
+    heading_font:
+      google: Montserrat
+    code_font:
+      google: JetBrains Mono
+
+# Diátaxis layout: Guides = task-oriented how-to (real vignettes, CRAN-bound);
+# Under the hood = explanation/internals (web-only articles in
+# vignettes/articles/).
+navbar:
+  structure:
+    left: [intro, guides, under-the-hood, reference, news]
+    right: [search, github]
+  components:
+    guides:
+      text: Guides
+      menu:
+      - text: Map compositions
+        href: articles/map-compositions.html
+      - text: Joining custom data
+        href: articles/joining-data.html
+      - text: Health geographies
+        href: articles/health-geographies.html
+      - text: Boundary vintages and older data
+        href: articles/vintages.html
+      - text: Downloading official data
+        href: articles/downloading-data.html
+    under-the-hood:
+      text: Under the hood
+      menu:
+      - text: How the bundled data is built
+        href: articles/data-pipeline.html
+      - text: How name matching works
+        href: articles/name-matching.html
+
+articles:
+- title: Guides
+  navbar: ~
+  contents:
+  - map-compositions
+  - joining-data
+  - health-geographies
+  - vintages
+  - downloading-data
+- title: Under the hood
+  contents:
+  - articles/data-pipeline
+  - articles/name-matching
+
+reference:
+- title: Make a map
+  desc: >
+    Composed maps of Portugal (mainland + island insets) and one-liner
+    choropleths.
+  contents:
+  - plot_pt
+  - get_map
+- title: Island layout
+  desc: >
+    How the Açores and Madeira are shown, and helpers for drawing the frames
+    and island labels with echarts4r.
+  contents:
+  - island_layout
+  - frame_data_echarts
+  - box_labels_echarts
+- title: Join and match
+  desc: Getting custom data onto official units.
+  contents:
+  - pt_join
+  - pt_match
+  - pt_match_report
+  - pt_normalize
+  - pt_pad_code
+- title: Vintages
+  desc: Converting freguesia-level data between boundary vintages.
+  contents:
+  - pt_crosswalk
+  - pt_recode
+- title: Download client
+  desc: >
+    Full-resolution CAOP downloads, INE census geographies, and the DGT
+    OGC API.
+  contents:
+  - GeoClient
+  - get_censos
+- title: Data
+  desc: Bundled boundaries and lookup tables.
+  contents:
+  - boundaries
+  - pt_censos_vars
+  - pt_registry
+  - pt_lookup
+  - pt_health_codes
+  - pt_nuts_codes
+
+news:
+  one_page: true

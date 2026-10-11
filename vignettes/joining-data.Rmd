@@ -1,0 +1,206 @@
+---
+title: "Joining data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Joining data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 6,
+  out.width = "100%"
+)
+```
+
+```{r setup}
+library(geopt)
+```
+
+Portuguese data usually identifies places in one of three ways: by official
+code (the 4-digit DTMN for a municipality, the 6-digit DTMNFR for a
+freguesia), by name, in whatever spelling the source uses, or by NUTS code.
+This guide shows how to get each of them onto a map, and how to deal with the
+usual problems: repeated names, lost leading zeros and spelling variants.
+
+## Join by code when available
+
+Codes are unambiguous, so use them whenever possible:
+
+```{r by-code}
+df <- data.frame(dtmn = c("1106", "1312"), value = c(20, 10))
+m <- get_map("municipio", data = df, by = "dtmn")
+```
+
+Excel often turns `"0115"` into `115`. geopt restores the leading zeros when
+it joins. To fix a column directly:
+
+```{r pad}
+pt_pad_code(c(115, 1106), "municipio")
+```
+
+## Join by name
+
+Names are matched by `pt_match()`, which ignores accents, case and
+punctuation, and reads the abbreviations `S.`, `Sta.` and `Sto.` as São,
+Santa and Santo:
+
+```{r by-name}
+df <- data.frame(concelho = c("porto", "CÂMARA DE LOBOS", "S. João da Madeira"),
+                 value = c(1, 2, 3))
+pt_match(df$concelho)
+```
+
+### Repeated names
+
+Some names are shared: two municipalities are called **Lagoa** (one in Faro
+district, one on São Miguel), and 196 freguesia names are used by more than
+one freguesia. A name that fits more than one unit returns `NA` with a
+warning. geopt never guesses:
+
+```{r ambiguous}
+pt_match("Lagoa")
+```
+
+There are two ways to say which one is meant. Add the region in brackets after
+the name, as INE's files often do, or pass a `context`, the unit it belongs
+to:
+
+```{r disambiguate}
+pt_match(c("Lagoa (Faro)", "Lagoa (Açores)", "Lagoa (R.A.A.)"), quiet = TRUE)
+
+pt_match("Lagoa", context = "Faro", quiet = TRUE)
+```
+
+At freguesia level, repeated names are common, so always give the
+municipality as context. No municipality has two freguesias with the same
+name, so this always settles it:
+
+```{r freg-context}
+df <- data.frame(freg = c("Pinheiro", "Pinheiro"),
+                 mun  = c("Guimarães", "Castro Daire"))
+pt_match(df$freg, level = "freguesia", context = df$mun, quiet = TRUE)
+```
+
+### Names from older data
+
+In 2013, about half of all freguesias were merged into *uniões de
+freguesias*, and in 2025 some of them were split again. Names from before
+2013 match the freguesia that covers the same place today, so a file from an
+older census joins without being converted first:
+
+```{r historic}
+pt_match(c("Sé", "Maximinos"), level = "freguesia",
+         context = "Braga", quiet = TRUE)
+```
+
+Both are now part of `União das freguesias de Braga (Maximinos, Sé e
+Cividade)`. The report marks these matches as `"historic"`, which shows
+how much of a join relied on old names. A name that is still in use always
+takes priority over an old one, so this never changes what a current name
+matches. Pass `historic = FALSE` to accept only current names.
+
+To get the code each freguesia had before 2013 instead, pass
+`admin_vintage = "2011"` (the map the 2011 census used). Each old freguesia
+then keeps its own code, rather than sharing the code of the união it joined:
+
+```{r historic-to}
+pt_match(c("Sé", "Maximinos"), level = "freguesia", context = "Braga",
+         admin_vintage = "2011", quiet = TRUE)
+```
+
+To convert the *values* in a dataset between these versions of the map, see
+`pt_recode()` and `vignette("vintages")`.
+
+### Spelling variants and typos
+
+If a source consistently spells a name its own way, pass `aliases`:
+
+```{r aliases}
+pt_match("VN Gaia", aliases = c("VN Gaia" = "Vila Nova de Gaia"), quiet = TRUE)
+```
+
+For typos, turn on fuzzy matching (this needs the stringdist package). It
+only runs on names that didn't match exactly, only accepts a candidate that
+is clearly the closest, and reports every match it makes:
+
+```{r fuzzy, eval = requireNamespace("stringdist", quietly = TRUE)}
+pt_match("Guimaraess", fuzzy = TRUE)
+```
+
+### Checking what matched
+
+Every result from `pt_match()` and `pt_join()` carries a report. Check it
+before trusting a join:
+
+```{r report}
+res <- pt_match(c("Porto", "Lagoa", "Atlantis"), quiet = TRUE)
+pt_match_report(res)
+```
+
+The `method` column says how each input was matched, or why it wasn't:
+
+| `method` | Meaning |
+|---|---|
+| `code` | the input was an official code |
+| `exact` | the name matched, once accents, case and punctuation were ignored |
+| `loose` | the name matched once small words like "da" or "dos" were ignored |
+| `historic` | the name is from an older map, such as one from before 2013 |
+| `alias` | the name matched through `aliases` |
+| `fuzzy` | a close spelling matched (only with `fuzzy = TRUE`) |
+| `ambiguous` | more than one unit has this name: add a context |
+| `context_unrecognized` | the given context isn't a unit geopt knows |
+| `unmatched` | no unit has this name |
+| `empty` | the input was empty or `NA` |
+
+## Three ways to join
+
+**`get_map(data =, by =)`** joins straight onto the boundaries, for maps:
+
+```{r get-map-join, eval = FALSE}
+m <- get_map("municipio", data = df, by = c(municipio = "concelho"))
+```
+
+**`pt_join()`** adds to the data frame the codes and the regions each unit
+belongs to, for work that doesn't need a map. It only adds columns that have a
+single value for each unit at the level joined on. Some municipalities are split
+between several ULS, for example, so a join by municipality gets
+`uls_municipio` rather than `uls` (see `vignette("health-geographies")`):
+
+```{r pt-join}
+df <- data.frame(concelho = c("Porto", "Águeda"), value = c(1, 2))
+out <- pt_join(df, by = c(municipio = "concelho"))
+names(out)
+```
+
+Like `pt_match()`, `pt_join()` takes `admin_vintage` and `nuts_vintage`. INE
+publishes freguesias on the 2013 map, so for its data `admin_vintage = "2013"`
+(or `"auto"`) keeps the 2013 codes and adds that map's names, and
+`nuts_vintage` picks the NUTS revision of the regions added:
+
+```{r pt-join-vintage}
+ine <- data.frame(dtmnfr = "030882", value = 3)  # a união split in 2025
+pt_join(ine, by = "dtmnfr", admin_vintage = "2013")[, c("dtmnfr", "freguesia", "municipio")]
+```
+
+**`pt_lookup()`** returns the table of codes and regions itself, as a plain
+data frame, ready for any other kind of join. Health columns are only added
+when `health_vintage` says which version of the health map to use:
+
+```{r codes-direct}
+codes <- pt_lookup(health_vintage = "2024")
+head(codes[, c("dtmnfr", "freguesia", "dtmn", "municipio", "nuts3_cod", "unit")])
+```
+
+## Cleaning names directly
+
+The name cleaning that `pt_match()` uses is available as `pt_normalize()`, so
+the same rules can be applied to any column before a manual join:
+
+```{r normalize}
+pt_normalize(c("S. Jorge", "SÃO JORGE", "Sao-Jorge"))
+```

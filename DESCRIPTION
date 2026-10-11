@@ -1,0 +1,58 @@
+Package: geopt
+Title: Tools to Access and Map Spatial Datasets of Portugal
+Version: 0.1.0
+Authors@R:
+    person("Carlos", "Matos", email = "carlosmdmatos@gmail.com", role = c("aut", "cre", "cph"))
+Description: Tools to download, process, and visualize official spatial datasets
+    for Portugal. Get administrative boundaries at all levels and
+    other geospatial data ready for mapping. Data from Statistics Portugal
+    (INE), for example retrieved with the 'ineptr2' package, can be joined to
+    the boundaries by place name or code, including names from earlier
+    boundary reforms.
+License: MIT + file LICENSE
+URL: https://c-matos.github.io/geopt, https://github.com/c-matos/geopt
+BugReports: https://github.com/c-matos/geopt/issues
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
+Imports:
+    R6,
+    sf,
+    httr2 (>= 1.0.0),
+    geojsonsf,
+    digest
+Suggests:
+    rmapshaper,
+    stringdist,
+    ggplot2,
+    tmap,
+    echarts4r,
+    htmlwidgets,
+    dplyr,
+    plotly,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Collate:
+    'utils.R'
+    'compose.R'
+    'layout.R'
+    'atoms.R'
+    'lookup.R'
+    'match.R'
+    'match-pool.R'
+    'join.R'
+    'derive.R'
+    'vintage.R'
+    'censos.R'
+    'get_map.R'
+    'plot.R'
+    'GeoClient.R'
+    'data.R'
+    'geopt-package.R'
+Config/roxygen2/version: 8.0.0

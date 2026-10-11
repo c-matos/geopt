@@ -1,0 +1,16 @@
+.Rproj.user
+
+dev/
+.Rhistory
+.Renviron
+.RData
+.httr-oauth
+.DS_Store
+.quarto
+docs
+/doc/
+/Meta/
+
+/.quarto/
+README.html
+**/*.quarto_ipynb
