@@ -1,0 +1,16 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  articles/data-pipeline: data-pipeline.html
+  downloading-data: downloading-data.html
+  geopt: geopt.html
+  health-geographies: health-geographies.html
+  joining-data: joining-data.html
+  map-compositions: map-compositions.html
+  articles/name-matching: name-matching.html
+  vintages: vintages.html
+last_built: 2026-10-11T18:14Z
+urls:
+  reference: https://c-matos.github.io/geopt/reference
+  article: https://c-matos.github.io/geopt/articles

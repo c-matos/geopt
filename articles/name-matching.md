@@ -1,0 +1,257 @@
+# How name matching works
+
+[`pt_match()`](https://c-matos.github.io/geopt/reference/pt_match.md)
+looks simple from the outside. This article explains the steps behind
+it, and *why* they are the way they are: the design follows from
+measured facts about Portuguese place names.
+
+## The problem, quantified
+
+Matching names to units would be trivial if names were unique. They are
+not:
+
+``` r
+
+codes <- pt_lookup()
+tf <- table(codes$freguesia)
+sum(tf > 1)                    # freguesia names used by more than one freguesia
+#> [1] 196
+head(sort(tf, decreasing = TRUE), 3)
+#> 
+#>       Pinheiro Rio de Moinhos      Carvalhal 
+#>              6              6              5
+
+mun <- unique(codes[, c("municipio", "distrito_ilha")])
+mun$municipio[duplicated(mun$municipio)]   # ambiguous municipality names
+#> [1] "Lagoa"
+```
+
+At municipality level, only one name is shared: Lagoa, in Faro district
+and on São Miguel. At freguesia level, shared names are the norm: about
+200 names are used more than once, some six times. But no municipality
+has two freguesias with the same name, so knowing the municipality
+always settles it. That fact shapes the whole design: *narrowing the
+search with a context is the core of the matcher, not an extra*.
+
+## The steps
+
+For each input, in order:
+
+1.  **Codes.** Strings of digits have any lost leading zeros restored
+    and are checked against the level’s codes; strings like `"PT11A"`
+    are accepted at NUTS levels. Codes never go through name matching.
+2.  **The name as given.** Tried first, exactly, before anything is
+    taken apart. This matters because over a hundred current freguesia
+    names, and 265 pre-2013 ones, *end* in brackets
+    (`"Bouro (Santa Maria)"`, `"Ílhavo (São Salvador)"`), and a real
+    name must never be mistaken for a name followed by a region.
+3.  **A region in brackets.** Only if step 2 fails: in
+    `"Lagoa (Açores)"` or `"Calheta [R.A.M.]"`, the part in brackets is
+    taken off and used as the context. INE’s `R.A.A.` and `R.A.M.` forms
+    are understood. A region after a dash (`"Calheta - RAA"`) is only
+    split off when it’s a recognized region, so `"Albergaria-a-Velha"`
+    stays in one piece.
+4.  **Cleaning**
+    ([`pt_normalize()`](https://c-matos.github.io/geopt/reference/pt_normalize.md)):
+    lowercase, expand `S.`, `Sta.` and `Sto.`, remove accents and
+    punctuation. Cleaning makes almost no names collide that didn’t
+    already (196 shared freguesia names become 199), which is why it’s
+    safe to apply to everything.
+5.  **Aliases**, cleaned the same way. They’re checked before any name
+    is matched: the way to handle a source’s own spellings.
+6.  **Exact match, within the context.** If there’s a context (from the
+    argument or from brackets), only the units inside it are considered.
+7.  **Name and context combined.** With a context, `"Sé"` + `"Braga"` is
+    also tried as `"Sé (Braga)"` and `"Braga (Sé)"`; see *Two ways to
+    spell the same freguesia* below.
+8.  **Ignoring small words.** `"ULS da Guarda"` matches `"ULS Guarda"`,
+    and `"Senhora da Graça de Padrões"` matches `"…dos Padrões"`. An
+    exact spelling always wins; this step only runs when nothing matched
+    exactly. The report marks these matches as `"loose"`.
+9.  **Fuzzy matching**, if requested, on whatever is still unmatched.
+
+Step 6 also checks a short internal list of known variants: spellings
+INE uses that aren’t the official name (`"Passos"` and `"Paços"`), a
+ULS’s name before 2024, and units whose official name has a qualifier
+added to tell it apart, so the plain name doesn’t appear anywhere
+(`"Calheta"` for `"Calheta de São Jorge"`).
+
+## Two vintages of names
+
+In 2013, about half of all freguesias were merged into uniões, so a name
+read off an older census file often has no current counterpart.
+[`pt_match()`](https://c-matos.github.io/geopt/reference/pt_match.md)
+matches those too (`historic = TRUE`, the default), and returns the unit
+that covers that territory today:
+
+``` r
+
+pt_match(c("Sé", "Maximinos", "Cividade"), level = "freguesia",
+         context = "Braga", quiet = TRUE)
+#> [1] "030364" "030364" "030364"
+#> attr(,"report")
+#>       input      matched_name   code   method dist
+#> 1        Sé        Braga (Sé) 030364 historic   NA
+#> 2 Maximinos Braga (Maximinos) 030364 historic   NA
+#> 3  Cividade  Braga (Cividade) 030364 historic   NA
+```
+
+All three were merged into one união in 2013. The report labels them,
+which tells a match on an old name apart from a match on a current one:
+
+``` r
+
+pt_match_report(pt_match(c("Sé", "Gualtar"), level = "freguesia",
+                         context = "Braga", quiet = TRUE))
+#>     input matched_name   code   method dist
+#> 1      Sé   Braga (Sé) 030364 historic   NA
+#> 2 Gualtar      Gualtar 030319    exact   NA
+```
+
+The code returned is the current one. `admin_vintage` asks for another
+vintage’s code instead. Because each name matched a *particular* old
+freguesia, it can return that one, rather than only the união that
+covers all three:
+
+``` r
+
+pt_match(c("Sé", "Maximinos", "Cividade"), level = "freguesia",
+         context = "Braga", admin_vintage = "2011", quiet = TRUE)
+#> [1] "030352" "030324" "030307"
+#> attr(,"report")
+#>       input      matched_name   code method dist
+#> 1        Sé        Braga (Sé) 030352  exact   NA
+#> 2 Maximinos Braga (Maximinos) 030324  exact   NA
+#> 3  Cividade  Braga (Cividade) 030307  exact   NA
+```
+
+This works by matching against that vintage’s names directly, not by
+looking up a column: a current freguesia can have up to 12 pre-2013
+predecessors, which don’t fit in a table with one row per current
+freguesia. A *current* name doesn’t point to any one predecessor, so
+with `admin_vintage = "2011"` it only matches when the freguesia had
+exactly one. Otherwise it returns `NA`, since nothing says which of them
+was meant.
+
+This is the one place where a name can mean two different units, so the
+order matters: **a name still in use always wins over an old one.** 161
+pre-2013 names are spelled the same as a current freguesia that is a
+different unit. Figueira da Foz’s `"Alhadas"`, for example, is both a
+current freguesia and the name of a 2013 união that was later split up.
+If old and current names were treated as equals, all of those would
+become ambiguous, and 166 bare names that resolve to a current freguesia
+would return `NA` instead. So when both an old and a current name match,
+only the current one is kept.
+
+It follows that historic matching never changes how a current name
+resolves: every current freguesia matches the same way with
+`historic = TRUE` and `historic = FALSE`.
+
+When an old freguesia’s territory was later split between several
+current ones, its name really is ambiguous, and is reported that way:
+pass a context or use codes. Old names are matched exactly, or ignoring
+small words, but never fuzzily. An old name already involves a guess
+about which vintage was meant, and letting a typo make a second guess
+would produce a match nobody could check.
+
+## Two ways to spell the same freguesia
+
+INE prefixes a city’s pre-2013 freguesias with the city —
+`"Braga (Sé)"`, `"Beja (Salvador)"` — but names the same kind of unit
+plainly elsewhere (`"Sé"` in Lisboa, Porto and Portalegre). All the
+spellings resolve:
+
+``` r
+
+pt_match(c("Braga (Sé)", "Sé (Braga)"), level = "freguesia", quiet = TRUE)
+#> [1] "030364" "030364"
+#> attr(,"report")
+#>        input matched_name   code   method dist
+#> 1 Braga (Sé)   Braga (Sé) 030364 historic   NA
+#> 2 Sé (Braga)   Braga (Sé) 030364 historic   NA
+```
+
+The names are stored exactly as INE publishes them. The other spellings
+are built from the name and the context at match time (step 7), rather
+than listed in advance. A bare `"Sé"` with no context stays ambiguous:
+six cities had one.
+
+## Deliberately strict
+
+Three behaviours are strict on purpose:
+
+- **An ambiguous name gives `NA` and a warning, never a guess.** A wrong
+  Lagoa that nobody notices ends up as a wrong published map.
+- **An unrecognized context gives `NA`.** If a misspelled
+  `context = "Nrte"` were quietly ignored, an ambiguous name would be
+  matched without it, which is exactly the wrong-namesake mistake a
+  context exists to prevent.
+- **Fuzzy matching is off unless requested, and cautious when on.** It
+  only runs on names that didn’t match exactly, only accepts a candidate
+  that is clearly closer than the next best, never picks between units
+  that share a name, and reports every match it makes. The context
+  matters most here: it cuts the candidates from about 3,000 names to a
+  few dozen, which is what makes matching by spelling distance safe at
+  all.
+
+Every decision is recorded in the report attached to the result:
+
+``` r
+
+res <- pt_match(c("0115", "Lagoa (Faro)", "Lagoa", "Atlantis"), quiet = TRUE)
+pt_match_report(res)
+#>          input matched_name code    method dist
+#> 1         0115         <NA> 0115      code   NA
+#> 2 Lagoa (Faro)        Lagoa 0806     exact   NA
+#> 3        Lagoa         <NA> <NA> ambiguous   NA
+#> 4     Atlantis         <NA> <NA> unmatched   NA
+```
+
+## Why the echarts renderer keys by code
+
+The same shared names explain a detail of
+[`plot_pt()`](https://c-matos.github.io/geopt/reference/plot_pt.md). An
+echarts map links data to shapes **by name**. If the shapes were
+registered under their names, the two Lagoas couldn’t be told apart, and
+one would quietly get the other’s value. So the echarts renderer
+registers each shape under its official code, and only turns codes back
+into names for the tooltips.
+
+## Where the names come from
+
+The official names and codes are CAOP’s, through `pt_registry` (one row
+per freguesia; see *How the bundled data is built*). Matching at a level
+uses that level’s name columns. For freguesias, that’s both the official
+name and CAOP’s simplified name (`designacao_simplificada`), so either
+spelling matches.
+
+The 2013 freguesias have the last name each carried on that map, as in
+CAOP 2024 (DGT’s last release of it) and in INE’s tables, which agree on
+every one. 25 of them were renamed by law while the map was in force,
+and DGT corrected a few spellings. Those earlier names are names of the
+2013 map too, so they match there even with `historic = FALSE`:
+
+``` r
+
+pt_match(c("Buarcos", "Buarcos e São Julião"), level = "freguesia",
+         context = "Figueira da Foz", admin_vintage = "2013",
+         historic = FALSE, quiet = TRUE)
+#> [1] "060520" "060520"
+#> attr(,"report")
+#>                  input         matched_name   code method dist
+#> 1              Buarcos              Buarcos 060520  exact   NA
+#> 2 Buarcos e São Julião Buarcos e São Julião 060520  exact   NA
+```
+
+Pre-2013 names are the `"2011"` and `"2001"` vintages of `pt_registry`.
+They come from INE’s code lists for those two censuses: indicator
+0006393 for 2011, whose 4,260 codes are exactly the map in force before
+2013, and indicator 0000535 for 2001, with 4,241 (see
+`data-raw/fetch_2011_names.R` and `data-raw/fetch_2001_registry.R`).
+
+Most 2001 names are also 2011 names, and a few of those freguesias lost
+territory in between: São Salvador, in Odemira, gave part of its land to
+two new freguesias in 2001. So a 2001 name is only used when no later
+vintage has it. `"Odemira (São Salvador)"` keeps its 2011 meaning, which
+is one freguesia today, while `"Agualva-Cacém"`, which was split in
+2001, is matched from the 2001 map.

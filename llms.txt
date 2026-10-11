@@ -1,0 +1,227 @@
+# geopt
+
+This is a package centered around Portuguese spatial data. The main
+features are:
+
+- **Official downloads**: full-resolution CAOP, server-side queries
+  against the DGT OGC API, and INE census geographies (BGRI subsecções
+  and secções, 1 km grid).
+- A **join layer**: match data by code or by name, without fighting
+  accents, duplicate names or codes from older vintages.
+- **Ready-to-map boundaries**: pre-simplified sf objects from freguesia
+  up to NUTS 1, plus health boundaries, with Açores and Madeira as
+  optional insets.
+- **Vintages**: codes and names for four freguesia maps (2001, 2011,
+  2013 and 2025), with boundaries for the 2013 and 2025 ones, plus three
+  NUTS revisions and the health geography before and after the 2024
+  reform. Crosswalks convert freguesia data between maps. Each of these
+  changes on its own schedule, so each has its own vintage argument.
+
+## Example maps
+
+![Municipality and ULS maps produced with
+plot_pt()](reference/figures/README-overview-maps-1.png)
+
+## Installation
+
+``` r
+
+# From CRAN
+install.packages("geopt")
+
+# From GitHub
+# install.packages("pak")
+pak::pak("c-matos/geopt")
+```
+
+## A map in one line
+
+``` r
+
+library(geopt)
+
+# Custom data
+df <- data.frame(
+  concelho = c("PORTO", "Lisboa", "golega", "Faro", "Lagoa (RAA)", "Calheta (RAM)"),
+  score = c(10, 25, 15, 8, 18, 12)
+)
+
+# Plot a map
+plot_pt(df, value = "score", by = c(municipio = "concelho"))
+#> get_map: 302 boundaries have no data row (NA fill).
+```
+
+![](reference/figures/README-one-line-map-1.png)
+
+- Names were matched with the bundled spatial data, ignoring accents and
+  case. The qualifiers picked the right unit: Lagoa (RAA) is the one in
+  the Açores, not Faro’s, and Calheta (RAM) the one in Madeira, not São
+  Jorge’s.
+- The archipelagos are there as insets
+- Return value is a plain ggplot you can customise.
+
+Add `renderer = "echarts"` for an interactive htmlwidget instead.
+
+``` r
+
+plot_pt(df, value = "score", by = c(municipio = "concelho"), renderer = "echarts")
+```
+
+## Learn more
+
+Start with
+[`vignette("geopt")`](https://c-matos.github.io/geopt/articles/geopt.html),
+then pick the guide for the task at hand:
+
+- **Change the island layout**, draw frames around the islands, or use
+  tmap or echarts4r instead of ggplot2:
+  [`vignette("map-compositions")`](https://c-matos.github.io/geopt/articles/map-compositions.html)
+- **Get your data onto the map** by code or by name, including ambiguous
+  and misspelled names:
+  [`vignette("joining-data")`](https://c-matos.github.io/geopt/articles/joining-data.html)
+- **Map ULS, regiões de saúde or ACES**:
+  [`vignette("health-geographies")`](https://c-matos.github.io/geopt/articles/health-geographies.html)
+- **Work with older boundaries**, or convert freguesia data across
+  reorganizations:
+  [`vignette("vintages")`](https://c-matos.github.io/geopt/articles/vintages.html)
+- **Download full-resolution CAOP**, INE census data, or query DGT’s
+  online service:
+  [`vignette("downloading-data")`](https://c-matos.github.io/geopt/articles/downloading-data.html)
+
+Curious how it works? [The website](https://c-matos.github.io/geopt/)
+has articles on how the bundled data is built and how name matching
+works.
+
+## Data sources
+
+- **Administrative boundaries**: [CAOP — Carta Administrativa Oficial de
+  Portugal](https://www.dgterritorio.gov.pt/cartografia/cartografia-tematica/caop),
+  Direção-Geral do Território (DGT).
+- **Census geographies**: [BGRI and the 1 km
+  grid](https://mapas.ine.pt/download/index2021.phtml), Instituto
+  Nacional de Estatística (INE). Downloaded on demand by
+  [`get_censos()`](https://c-matos.github.io/geopt/reference/get_censos.md),
+  not bundled.
+- **NUTS and health geographies**: see
+  [`?pt_nuts_codes`](https://c-matos.github.io/geopt/reference/pt_nuts_codes.md)
+  and
+  [`?pt_health_codes`](https://c-matos.github.io/geopt/reference/pt_health_codes.md).
+
+geopt is not affiliated with DGT or INE.
+
+## AI disclosure
+
+AI was used in the development of this package. Claude (Anthropic),
+specifically Claude Opus 4.8, Opus 5 and Opus 5.5, assisted with writing
+code, tests and documentation.
+
+## License
+
+MIT © Carlos Matos
+
+# Package index
+
+## Make a map
+
+Composed maps of Portugal (mainland + island insets) and one-liner
+choropleths.
+
+- [`plot_pt()`](https://c-matos.github.io/geopt/reference/plot_pt.md) :
+  Quick map of Portugal
+- [`get_map()`](https://c-matos.github.io/geopt/reference/get_map.md) :
+  Get a composed map of Portugal
+
+## Island layout
+
+How the Açores and Madeira are shown, and helpers for drawing the frames
+and island labels with echarts4r.
+
+- [`island_layout()`](https://c-matos.github.io/geopt/reference/island_layout.md)
+  : Lay out the islands
+- [`frame_data_echarts()`](https://c-matos.github.io/geopt/reference/frame_data_echarts.md)
+  : Build echarts frame styling data
+- [`box_labels_echarts()`](https://c-matos.github.io/geopt/reference/box_labels_echarts.md)
+  : Add labels to an echarts map
+
+## Join and match
+
+Getting custom data onto official units.
+
+- [`pt_join()`](https://c-matos.github.io/geopt/reference/pt_join.md) :
+  Add official codes and administrative context to a data frame
+- [`pt_match()`](https://c-matos.github.io/geopt/reference/pt_match.md)
+  : Match place names to official codes
+- [`pt_match_report()`](https://c-matos.github.io/geopt/reference/pt_match_report.md)
+  : Retrieve the match report from a pt_match result
+- [`pt_normalize()`](https://c-matos.github.io/geopt/reference/pt_normalize.md)
+  : Normalize Portuguese place names for matching
+- [`pt_pad_code()`](https://c-matos.github.io/geopt/reference/pt_pad_code.md)
+  : Restore leading zeros in administrative codes
+
+## Vintages
+
+Converting freguesia-level data between boundary vintages.
+
+- [`pt_crosswalk()`](https://c-matos.github.io/geopt/reference/pt_crosswalk.md)
+  : Correspondence between two administrative vintages
+- [`pt_recode()`](https://c-matos.github.io/geopt/reference/pt_recode.md)
+  : Convert freguesia-level data between code vintages
+
+## Download client
+
+Full-resolution CAOP downloads, INE census geographies, and the DGT OGC
+API.
+
+- [`GeoClient`](https://c-matos.github.io/geopt/reference/GeoClient.md)
+  : GeoClient
+- [`get_censos()`](https://c-matos.github.io/geopt/reference/get_censos.md)
+  : Get INE census geographies (BGRI, secções, GRID)
+
+## Data
+
+Bundled boundaries and lookup tables.
+
+- [`pt_freguesias`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_municipios`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_distritos`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_nuts1`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_nuts2`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_nuts3`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_uls`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_reg_saude`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_aces`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_uls_municipio`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  [`pt_aces_municipio`](https://c-matos.github.io/geopt/reference/boundaries.md)
+  : Simplified Portuguese administrative boundaries
+- [`pt_censos_vars`](https://c-matos.github.io/geopt/reference/pt_censos_vars.md)
+  : Census variables available from get_censos()
+- [`pt_registry`](https://c-matos.github.io/geopt/reference/pt_registry.md)
+  : Portuguese administrative units, every vintage
+- [`pt_lookup()`](https://c-matos.github.io/geopt/reference/pt_lookup.md)
+  : Administrative, NUTS and health codes for one choice of each vintage
+- [`pt_health_codes`](https://c-matos.github.io/geopt/reference/pt_health_codes.md)
+  : Health geography of Portuguese freguesias, both vintages
+- [`pt_nuts_codes`](https://c-matos.github.io/geopt/reference/pt_nuts_codes.md)
+  : NUTS classification of Portuguese municípios, every revision
+
+# Articles
+
+### Guides
+
+- [Map
+  compositions](https://c-matos.github.io/geopt/articles/map-compositions.md):
+- [Joining
+  data](https://c-matos.github.io/geopt/articles/joining-data.md):
+- [Health
+  geographies](https://c-matos.github.io/geopt/articles/health-geographies.md):
+- [Boundary vintages and older
+  data](https://c-matos.github.io/geopt/articles/vintages.md):
+- [Downloading official
+  data](https://c-matos.github.io/geopt/articles/downloading-data.md):
+
+### Under the hood
+
+- [How the bundled data is
+  built](https://c-matos.github.io/geopt/articles/data-pipeline.md):
+- [How name matching
+  works](https://c-matos.github.io/geopt/articles/name-matching.md):
