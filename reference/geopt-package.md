@@ -2,7 +2,7 @@
 
 Tools to download, process, and visualize official spatial datasets for
 Portugal. Get administrative boundaries at all levels and other
-geospatial data ready for mapping. Data from Statistics Portugal (INE),
+geographic data ready for mapping. Data from Statistics Portugal (INE),
 for example retrieved with the 'ineptr2' package, can be joined to the
 boundaries by place name or code, including names from earlier boundary
 reforms.
@@ -11,7 +11,7 @@ reforms.
 
 Useful links:
 
-- <https://c-matos.github.io/geopt>
+- <https://c-matos.github.io/geopt/>
 
 - <https://github.com/c-matos/geopt>
 
