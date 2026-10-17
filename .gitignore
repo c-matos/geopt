@@ -14,3 +14,10 @@ docs
 /.quarto/
 README.html
 **/*.quarto_ipynb
+/codecov
+/codecov.exe
+/codecov.asc
+/codecov*.SHA256SUM
+/codecov*.SHA256SUM.sig
+
+CRAN-SUBMISSION

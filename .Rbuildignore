@@ -16,3 +16,7 @@
 ^\.github$
 ^\.Renviron$
 ^\.quarto$
+^codecov(\.exe)?$
+^codecov\.asc$
+^codecov(\.exe)?\.SHA256SUM(\.sig)?$
+^CRAN-SUBMISSION$
